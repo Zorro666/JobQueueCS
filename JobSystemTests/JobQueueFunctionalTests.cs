@@ -29,7 +29,7 @@ namespace JobQueueCS
         {
             var queue = new JobQueue();
             var testJob = new TestJob();
-            var job = queue.Schedule(testJob);
+            var job = queue.Schedule(testJob, 1);
             Assert.False(job.Completed);
         }
 
@@ -38,7 +38,7 @@ namespace JobQueueCS
         {
             var queue = new JobQueue();
             var testJob = new TestJob();
-            var job = queue.Schedule(testJob);
+            var job = queue.Schedule(testJob, 2);
             queue.Complete(ref job);
             Assert.True(job.Completed);
         }
