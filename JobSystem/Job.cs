@@ -6,5 +6,7 @@ namespace JobSystem
     {
         public UInt64 Handle;
         public bool Completed { get; set; }
+
+        public JobQueueHelper.IParallelFor JobStruct;
     };
 }
