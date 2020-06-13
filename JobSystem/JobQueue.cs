@@ -2,14 +2,11 @@
 
 namespace JobSystem
 {
-    public static class JobQueueHelper
+    public interface IParallelFor
     {
-        public interface IParallelFor
-        {
-            void Pre();
-            void Main(int index);
-            void Post();
-        };
+        void Pre();
+        void Main(int index);
+        void Post();
     };
 
     public class JobQueue
@@ -19,46 +16,41 @@ namespace JobSystem
             FreeHandle = 0;
             NoParent = new Job
             {
-                ParentHandle = AllocateHandle(),
+                Parent = null,
                 Parents = null,
-                Handle = 0,
+                Handle = AllocateHandle(),
                 Completed = true,
                 MaxCount = 0
             };
         }
 
-        private Job ScheduleInternal<T>(in T jobStruct, in uint maxCount, in Job parent, in Job[] parents) where T : struct, JobQueueHelper.IParallelFor
-        {
-            if ((parents != null) && (parent.Handle != NoParent.Handle))
-            {
-                throw new ArgumentException($"Specifying Single Parent and Multiple Parents is not specified");
-            }
-
-            var job = new Job
-            {
-                ParentHandle = parent.Handle,
-                Parents = parents,
-                Handle = AllocateHandle(),
-                Completed = false,
-                MaxCount = maxCount
-            };
-            job.JobStruct = jobStruct;
-            return job;
-        }
-
-        public Job Schedule<T>(in T jobStruct, in uint maxCount) where T : struct, JobQueueHelper.IParallelFor
+        public Job Schedule<T>(T jobStruct, in uint maxCount) where T : class, IParallelFor
         {
             return ScheduleInternal(jobStruct, maxCount, NoParent, null);
         }
 
-        public Job Schedule<T>(in T jobStruct, in uint maxCount, in Job parent) where T : struct, JobQueueHelper.IParallelFor
+        public Job Schedule<T>(T jobStruct, in uint maxCount, in Job parent) where T : class, IParallelFor
         {
             return ScheduleInternal(jobStruct, maxCount, parent, null);
         }
 
         public void Complete(ref Job job)
         {
-            Console.WriteLine($"ParentHandle {job.ParentHandle} Handle {job.Handle}");
+            if (job.Completed == false)
+            {
+                Execute(ref job);
+            }
+        }
+
+        private void Execute(ref Job job)
+        {
+            ref var parent = ref job.Parent;
+            if (parent?.Completed == false)
+            {
+                Execute(ref parent);
+            }
+
+            Console.WriteLine($"ParentHandle {parent.Handle} Handle {job.Handle}");
             job.JobStruct.Pre();
             for (var i = 0; i < job.MaxCount; ++i)
             {
@@ -68,14 +60,34 @@ namespace JobSystem
             job.Completed = true;
         }
 
-        private Job NoParent;
-        private UInt64 FreeHandle;
+        private Job ScheduleInternal<T>(T jobStruct, in uint maxCount, in Job parent, in Job[] parents) where T : class, IParallelFor
+        {
+            if ((parents != null) && (parent.Handle != NoParent.Handle))
+            {
+                throw new ArgumentException($"Specifying Single Parent and Multiple Parents is not specified");
+            }
 
-        private UInt64 AllocateHandle()
+            var job = new Job
+            {
+                Parent = parent,
+                Parents = parents,
+                Handle = AllocateHandle(),
+                Completed = false,
+                MaxCount = maxCount
+            };
+            job.JobStruct = jobStruct;
+            return job;
+        }
+
+        private ulong AllocateHandle()
         {
             var handle = FreeHandle;
             ++FreeHandle;
             return handle;
         }
+
+        private Job NoParent;
+        private ulong FreeHandle;
+
     };
 }

@@ -1,4 +1,3 @@
-using System;
 using Xunit;
 using JobSystem;
 
@@ -6,21 +5,29 @@ namespace JobQueueCS
 {
     public class JobQueueFunctionalTests
     {
-        struct TestJob : JobQueueHelper.IParallelFor
+        class TestJob : IParallelFor
         {
+            public int Counter;
+            public int CounterInPre;
+            public int CounterInMain;
+            public int CounterInPost;
+
             public void Pre()
             {
-                Console.WriteLine("Pre");
+                CounterInPre = Counter;
+                ++Counter;
             }
 
             public void Main(int index)
             {
-                Console.WriteLine($"Main[{index}]");
+                CounterInMain = Counter;
+                ++Counter;
             }
 
             public void Post()
             {
-                Console.WriteLine("Post");
+                CounterInPost = Counter;
+                ++Counter;
             }
         };
 
@@ -42,5 +49,32 @@ namespace JobQueueCS
             queue.Complete(ref job);
             Assert.True(job.Completed);
         }
+
+        [Fact]
+        public void PreIsExecutedBeforeMain()
+        {
+            var queue = new JobQueue();
+            var testJob = new TestJob();
+            testJob.Counter = 0;
+            var job = queue.Schedule(testJob, 2);
+            queue.Complete(ref job);
+            Assert.Equal(0, testJob.CounterInPre);
+            Assert.True(testJob.CounterInMain > testJob.CounterInPre);
+        }
+
+        [Fact]
+        public void MainIsExecutedBeforePost()
+        {
+            var queue = new JobQueue();
+            var testJob = new TestJob();
+            testJob.Counter = 0;
+            var job = queue.Schedule(testJob, 2);
+            queue.Complete(ref job);
+            Assert.True(testJob.CounterInPost > testJob.CounterInMain);
+        }
+
+        // Parent is run before child
+        // N Parents are run before child
     }
 }
+
