@@ -1,0 +1,23 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobSystemTests", "JobSystemTests\JobSystemTests.csproj", "{FDBFB7B4-81EA-4A96-99C9-DEAD56B957C2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JobSystem", "JobSystem\JobSystem.csproj", "{1F130294-5B9F-4066-906C-3977CE543AAF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{FDBFB7B4-81EA-4A96-99C9-DEAD56B957C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FDBFB7B4-81EA-4A96-99C9-DEAD56B957C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FDBFB7B4-81EA-4A96-99C9-DEAD56B957C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FDBFB7B4-81EA-4A96-99C9-DEAD56B957C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1F130294-5B9F-4066-906C-3977CE543AAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1F130294-5B9F-4066-906C-3977CE543AAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1F130294-5B9F-4066-906C-3977CE543AAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1F130294-5B9F-4066-906C-3977CE543AAF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
