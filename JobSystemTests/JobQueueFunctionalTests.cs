@@ -36,9 +36,11 @@ namespace JobQueueCS
             public int CounterInPre;
             public int CounterInMain;
             public int CounterInPost;
-            public TestJob ParentTestJob;
-            public bool Completed;
-            public bool ParentWasCompleted;
+            public int Completed;
+
+            public TestJob[] Parents;
+            public int ParentCount;
+            public int ParentCompletedCount;
 
             public TestJob()
             {
@@ -46,20 +48,29 @@ namespace JobQueueCS
                 CounterInPre = int.MinValue;
                 CounterInMain = int.MinValue;
                 CounterInPost = int.MinValue;
-                ParentTestJob = null;
-                ParentWasCompleted = false;
-                Completed = false;
+                Completed = 0;
+
+                Parents = null;
+                ParentCount = 0;
+                ParentCompletedCount = 0;
             }
 
             public void Pre()
             {
-                ParentWasCompleted = ParentTestJob == null || ParentTestJob.Completed;
+                Completed = 0;
+                ParentCompletedCount = 0;
+                for (var i = 0; i < ParentCount; ++i)
+                {
+                    ParentCompletedCount += Parents[i].Completed;
+                }
+
                 CounterInPre = Counter;
                 ++Counter;
             }
 
             public void Main(int index)
             {
+                Completed = 0;
                 CounterInMain = Counter;
                 ++Counter;
             }
@@ -68,7 +79,7 @@ namespace JobQueueCS
             {
                 CounterInPost = Counter;
                 ++Counter;
-                Completed = true;
+                Completed = 1;
             }
         };
 
@@ -119,12 +130,17 @@ namespace JobQueueCS
         [Fact]
         public void ParentDependencyIsCompletedBeforeChild()
         {
+            const int parentsCount = 1;
             var parentTestJob = new TestJob();
-            testJob.ParentTestJob = parentTestJob;
+
+            testJob.Parents = new TestJob[parentsCount] { parentTestJob };
+            testJob.ParentCount = parentsCount;
+
             var jobParent = queue.Schedule(parentTestJob, 1);
             jobTestJob = queue.Schedule(testJob, 1, jobParent);
+
             queue.Complete(ref jobTestJob);
-            Assert.True(testJob.ParentWasCompleted);
+            Assert.Equal(parentsCount, testJob.ParentCompletedCount);
         }
 
         [Theory]
@@ -143,17 +159,52 @@ namespace JobQueueCS
         [InlineData(1024)]
         public void ParentDependencyChainIsCompletedBeforeChild(uint parentChainDepth)
         {
+            const int parentsCount = 1;
             Job jobParent = null;
+            TestJob parentTestJob = null;
+            TestJob thisJob;
             for (var i = 0; i < parentChainDepth; ++i)
             {
-                var parentTestJob = new TestJob();
-                testJob.ParentTestJob = parentTestJob;
-                jobParent = queue.Schedule(parentTestJob, 1);
+                thisJob = new TestJob();
+                if (parentTestJob != null)
+                {
+                    Assert.NotNull(jobParent);
+                    thisJob.Parents = new TestJob[parentsCount] { parentTestJob };
+                    thisJob.ParentCount = parentsCount;
+                    jobParent = queue.Schedule(thisJob, 1, jobParent);
+                }
+                else
+                {
+                    Assert.Null(jobParent);
+                    thisJob.Parents = null;
+                    thisJob.ParentCount = 0;
+                    jobParent = queue.Schedule(thisJob, 1);
+                }
+                parentTestJob = thisJob;
             }
+            Assert.NotNull(parentTestJob);
             Assert.NotNull(jobParent);
+
+            testJob.Parents = new TestJob[1] { parentTestJob };
+            testJob.ParentCount = parentsCount;
+
             jobTestJob = queue.Schedule(testJob, 1, jobParent);
             queue.Complete(ref jobTestJob);
-            Assert.True(testJob.ParentWasCompleted);
+
+            thisJob = testJob;
+            for (var i = 0; i < parentChainDepth; ++i)
+            {
+                var parent = thisJob.Parents[0];
+                if (parent.ParentCount == 1)
+                {
+                    Assert.Equal(parentsCount, parent.ParentCompletedCount);
+                }
+                else
+                {
+                    Assert.Equal(0, parent.ParentCompletedCount);
+                }
+                thisJob = parent;
+            }
         }
     }
 }
