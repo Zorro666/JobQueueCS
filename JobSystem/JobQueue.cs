@@ -106,7 +106,7 @@ namespace JobSystem
             return handle;
         }
 
-        private Job NoParent;
+        private readonly Job NoParent;
         private ulong FreeHandle;
 
     };

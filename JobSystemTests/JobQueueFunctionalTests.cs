@@ -7,9 +7,9 @@ namespace JobQueueCS
 {
     public class JobQueueFunctionalTests : IDisposable
     {
-        JobQueue queue;
-        TestJob testJob;
-        Job jobTestJob;
+        public readonly JobQueue queue;
+        public readonly TestJob testJob;
+        public Job jobTestJob;
 
         public JobQueueFunctionalTests()
         {
@@ -30,7 +30,7 @@ namespace JobQueueCS
             }
         }
 
-        class TestJob : IParallelFor
+        public class TestJob : IParallelFor
         {
             public int Counter;
             public int CounterInPre;
