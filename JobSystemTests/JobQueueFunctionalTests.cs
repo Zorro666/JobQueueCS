@@ -1,10 +1,35 @@
 using Xunit;
 using JobSystem;
 
+using System;
+
 namespace JobQueueCS
 {
-    public class JobQueueFunctionalTests
+    public class JobQueueFunctionalTests : IDisposable
     {
+        JobQueue queue;
+        TestJob testJob;
+        Job job;
+
+        public JobQueueFunctionalTests()
+        {
+            queue = new JobQueue();
+            testJob = new TestJob();
+            job = null;
+        }
+
+        public void Dispose()
+        {
+            if (job != null)
+            {
+                if (job.Completed == false)
+                {
+                    queue.Complete(ref job);
+                }
+                Assert.True(job.Completed);
+            }
+        }
+
         class TestJob : IParallelFor
         {
             public int Counter;
@@ -34,18 +59,14 @@ namespace JobQueueCS
         [Fact]
         public void Schedule_SetsCompletedToFalse()
         {
-            var queue = new JobQueue();
-            var testJob = new TestJob();
-            var job = queue.Schedule(testJob, 1);
+            job = queue.Schedule(testJob, 1);
             Assert.False(job.Completed);
         }
 
         [Fact]
         public void Completed_SetsCompletedToTrue()
         {
-            var queue = new JobQueue();
-            var testJob = new TestJob();
-            var job = queue.Schedule(testJob, 2);
+            job = queue.Schedule(testJob, 1);
             queue.Complete(ref job);
             Assert.True(job.Completed);
         }
@@ -53,28 +74,38 @@ namespace JobQueueCS
         [Fact]
         public void PreIsExecutedBeforeMain()
         {
-            var queue = new JobQueue();
-            var testJob = new TestJob();
-            testJob.Counter = 0;
-            var job = queue.Schedule(testJob, 2);
+            job = queue.Schedule(testJob, 1);
             queue.Complete(ref job);
             Assert.Equal(0, testJob.CounterInPre);
-            Assert.True(testJob.CounterInMain > testJob.CounterInPre);
+            Assert.Equal(testJob.CounterInPre + 1, testJob.CounterInMain);
         }
 
         [Fact]
         public void MainIsExecutedBeforePost()
         {
-            var queue = new JobQueue();
-            var testJob = new TestJob();
-            testJob.Counter = 0;
-            var job = queue.Schedule(testJob, 2);
+            job = queue.Schedule(testJob, 1);
             queue.Complete(ref job);
-            Assert.True(testJob.CounterInPost > testJob.CounterInMain);
+            Assert.Equal(testJob.CounterInMain + 1, testJob.CounterInPost);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(1024)]
+        public void MainIsExecutedCountTimes(uint count)
+        {
+            job = queue.Schedule(testJob, count);
+            queue.Complete(ref job);
+            var expectedCounter = (int)count;
+            Assert.Equal(expectedCounter, testJob.CounterInMain);
         }
 
         // Parent is run before child
         // N Parents are run before child
+        [Fact]
+        public void Jake()
+        {
+        }
     }
 }
 
