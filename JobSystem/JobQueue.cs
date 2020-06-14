@@ -49,13 +49,24 @@ namespace JobSystem
 
         private void Execute(ref Job job)
         {
-            ref var parent = ref job.Parent;
-            if (parent?.Completed == false)
+            if (job.Parents != null)
             {
-                Execute(ref parent);
+                var parentsCount = job.Parents.Length;
+                for (var p = 0; p < parentsCount; ++p)
+                {
+                    ref var parent = ref job.Parents[p];
+                    Execute(ref parent);
+                }
+            }
+            else if (job.Parent?.Completed == false)
+            {
+                ref var parent = ref job.Parent;
+                if (parent.Completed == false)
+                {
+                    Execute(ref parent);
+                }
             }
 
-            Console.WriteLine($"ParentHandle {parent.Handle} Handle {job.Handle}");
             job.JobStruct.Pre();
             for (var i = 0; i < job.MaxCount; ++i)
             {
@@ -67,6 +78,10 @@ namespace JobSystem
 
         private Job ScheduleInternal<T>(T jobStruct, in uint maxCount, in Job parent, in Job[] parents) where T : class, IParallelFor
         {
+            if (parent == null)
+            {
+                throw new ArgumentNullException("parent");
+            }
             if ((parents != null) && (parent.Handle != NoParent.Handle))
             {
                 throw new ArgumentException($"Specifying Single Parent and Multiple Parents is not specified");
