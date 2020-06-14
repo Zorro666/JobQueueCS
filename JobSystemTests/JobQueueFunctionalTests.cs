@@ -9,24 +9,24 @@ namespace JobQueueCS
     {
         JobQueue queue;
         TestJob testJob;
-        Job job;
+        Job jobTestJob;
 
         public JobQueueFunctionalTests()
         {
             queue = new JobQueue();
             testJob = new TestJob();
-            job = null;
+            jobTestJob = null;
         }
 
         public void Dispose()
         {
-            if (job != null)
+            if (jobTestJob != null)
             {
-                if (job.Completed == false)
+                if (jobTestJob.Completed == false)
                 {
-                    queue.Complete(ref job);
+                    queue.Complete(ref jobTestJob);
                 }
-                Assert.True(job.Completed);
+                Assert.True(jobTestJob.Completed);
             }
         }
 
@@ -36,9 +36,24 @@ namespace JobQueueCS
             public int CounterInPre;
             public int CounterInMain;
             public int CounterInPost;
+            public TestJob ParentTestJob;
+            public bool Completed;
+            public bool ParentWasCompleted;
+
+            public TestJob()
+            {
+                Counter = 0;
+                CounterInPre = int.MinValue;
+                CounterInMain = int.MinValue;
+                CounterInPost = int.MinValue;
+                ParentTestJob = null;
+                ParentWasCompleted = false;
+                Completed = false;
+            }
 
             public void Pre()
             {
+                ParentWasCompleted = ParentTestJob == null || ParentTestJob.Completed;
                 CounterInPre = Counter;
                 ++Counter;
             }
@@ -53,29 +68,30 @@ namespace JobQueueCS
             {
                 CounterInPost = Counter;
                 ++Counter;
+                Completed = true;
             }
         };
 
         [Fact]
         public void Schedule_SetsCompletedToFalse()
         {
-            job = queue.Schedule(testJob, 1);
-            Assert.False(job.Completed);
+            jobTestJob = queue.Schedule(testJob, 1);
+            Assert.False(jobTestJob.Completed);
         }
 
         [Fact]
         public void Completed_SetsCompletedToTrue()
         {
-            job = queue.Schedule(testJob, 1);
-            queue.Complete(ref job);
-            Assert.True(job.Completed);
+            jobTestJob = queue.Schedule(testJob, 1);
+            queue.Complete(ref jobTestJob);
+            Assert.True(jobTestJob.Completed);
         }
 
         [Fact]
         public void PreIsExecutedBeforeMain()
         {
-            job = queue.Schedule(testJob, 1);
-            queue.Complete(ref job);
+            jobTestJob = queue.Schedule(testJob, 1);
+            queue.Complete(ref jobTestJob);
             Assert.Equal(0, testJob.CounterInPre);
             Assert.Equal(testJob.CounterInPre + 1, testJob.CounterInMain);
         }
@@ -83,8 +99,8 @@ namespace JobQueueCS
         [Fact]
         public void MainIsExecutedBeforePost()
         {
-            job = queue.Schedule(testJob, 1);
-            queue.Complete(ref job);
+            jobTestJob = queue.Schedule(testJob, 1);
+            queue.Complete(ref jobTestJob);
             Assert.Equal(testJob.CounterInMain + 1, testJob.CounterInPost);
         }
 
@@ -94,17 +110,50 @@ namespace JobQueueCS
         [InlineData(1024)]
         public void MainIsExecutedCountTimes(uint count)
         {
-            job = queue.Schedule(testJob, count);
-            queue.Complete(ref job);
+            jobTestJob = queue.Schedule(testJob, count);
+            queue.Complete(ref jobTestJob);
             var expectedCounter = (int)count;
             Assert.Equal(expectedCounter, testJob.CounterInMain);
         }
 
-        // Parent is run before child
-        // N Parents are run before child
         [Fact]
-        public void Jake()
+        public void ParentDependencyIsCompletedBeforeChild()
         {
+            var parentTestJob = new TestJob();
+            testJob.ParentTestJob = parentTestJob;
+            var jobParent = queue.Schedule(parentTestJob, 1);
+            jobTestJob = queue.Schedule(testJob, 1, jobParent);
+            queue.Complete(ref jobTestJob);
+            Assert.True(testJob.ParentWasCompleted);
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(1024)]
+        public void MultipleParentDependencyIsCompletedBeforeChild(uint multipleParentsCount)
+        {
+            throw new NotImplementedException();
+        }
+
+        [Theory]
+        [InlineData(2)]
+        [InlineData(4)]
+        [InlineData(8)]
+        [InlineData(1024)]
+        public void ParentDependencyChainIsCompletedBeforeChild(uint parentChainDepth)
+        {
+            Job jobParent = null;
+            for (var i = 0; i < parentChainDepth; ++i)
+            {
+                var parentTestJob = new TestJob();
+                testJob.ParentTestJob = parentTestJob;
+                jobParent = queue.Schedule(parentTestJob, 1);
+            }
+            Assert.NotNull(jobParent);
+            jobTestJob = queue.Schedule(testJob, 1, jobParent);
+            queue.Complete(ref jobTestJob);
+            Assert.True(testJob.ParentWasCompleted);
         }
     }
 }
