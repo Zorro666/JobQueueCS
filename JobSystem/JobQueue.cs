@@ -34,6 +34,11 @@ namespace JobSystem
             return ScheduleInternal(jobStruct, maxCount, parent, null);
         }
 
+        public Job Schedule<T>(T jobStruct, in uint maxCount, in Job[] parents) where T : class, IParallelFor
+        {
+            return ScheduleInternal(jobStruct, maxCount, NoParent, parents);
+        }
+
         public void Complete(ref Job job)
         {
             if (job.Completed == false)

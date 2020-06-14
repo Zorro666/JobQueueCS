@@ -146,10 +146,26 @@ namespace JobQueueCS
         [Theory]
         [InlineData(1)]
         [InlineData(2)]
+        [InlineData(4)]
+        [InlineData(8)]
         [InlineData(1024)]
-        public void MultipleParentDependencyIsCompletedBeforeChild(uint multipleParentsCount)
+        [InlineData(1024 * 1024)]
+        public void MultipleParentDependencyIsCompletedBeforeChild(int multipleParentsCount)
         {
-            throw new NotImplementedException();
+            Job[] jobParents = new Job[multipleParentsCount];
+            testJob.Parents = new TestJob[multipleParentsCount];
+            testJob.ParentCount = multipleParentsCount;
+            for (var i = 0; i < multipleParentsCount; ++i)
+            {
+                var parentTestJob = new TestJob();
+                testJob.Parents[i] = parentTestJob;
+                jobParents[i] = queue.Schedule(parentTestJob, 1);
+            }
+
+            jobTestJob = queue.Schedule(testJob, 1, jobParents);
+            queue.Complete(ref jobTestJob);
+
+            Assert.Equal(multipleParentsCount, testJob.ParentCompletedCount);
         }
 
         [Theory]
